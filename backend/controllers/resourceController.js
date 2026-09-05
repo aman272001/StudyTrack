@@ -89,9 +89,10 @@ const attendanceStats = async (req, res) => {
     res.json({ data, subjects: data, total, present, absent: total - present, percentage: total ? Math.round(present * 10000 / total) / 100 : 0 });
 };
 const dashboard = async (req, res) => {
-    const [totalSubjects, tasks, totalNotes, attendance] = await Promise.all([
+    const [totalSubjects, tasks, recentNotes, totalNotes, attendance] = await Promise.all([
         Subject.countDocuments({ userId: req.user._id }),
-        Task.find({ userId: req.user._id }).sort({ deadline: 1 }).limit(5).populate("subjectId", "name"),
+        Task.find({ userId: req.user._id, completed: false }).sort({ deadline: 1 }).populate("subjectId", "name"),
+        Note.find({ userId: req.user._id }).sort({ updatedAt: -1, createdAt: -1 }).limit(1).populate("subjectId", "name"),
         Note.countDocuments({ userId: req.user._id }),
         Attendance.aggregate([{ $match: { userId: req.user._id } }, { $group: { _id: "$status", count: { $sum: 1 } } }])
     ]);
@@ -100,11 +101,15 @@ const dashboard = async (req, res) => {
     const attendanceTotal = totals.Present + totals.Absent;
     const pending = await Task.countDocuments({ userId: req.user._id, completed: false });
     const completed = await Task.countDocuments({ userId: req.user._id, completed: true });
+    const priorityRank = { High: 0, Medium: 1, Low: 2 };
+    const priorityTask = tasks
+        .sort((a, b) => (priorityRank[a.priority] ?? 1) - (priorityRank[b.priority] ?? 1) || new Date(a.deadline || 8640000000000000) - new Date(b.deadline || 8640000000000000))
+        .slice(0, 1);
     res.json({
         totals: { subjects: totalSubjects, tasks: pending + completed, notes: totalNotes },
         totalSubjects, totalTasks: pending + completed, totalNotes,
         pending, completed, overallAttendance: attendanceTotal ? Math.round(totals.Present * 10000 / attendanceTotal) / 100 : 0,
-        upcomingTasks: tasks, attendance: totals
+        upcomingTasks: priorityTask, recentNotes, attendance: totals
     });
 };
 module.exports = { list, get, create, update, remove, complete, noteFile, attendanceStats, dashboard };
