@@ -1,0 +1,1 @@
+export default function Modal({ title, children, onClose }) { return <div className="modal-backdrop"><div className="modal"><div className="section-title"><h2>{title}</h2><button className="ghost" onClick={onClose}>Close</button></div>{children}</div></div>; }
