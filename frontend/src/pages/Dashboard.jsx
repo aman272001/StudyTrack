@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import api from "../services/api";
-import { getData, messageOf } from "../utils/apiHelpers";
+import useFetch from "../hooks/useFetch";
 
 export default function Dashboard() {
-  const [summary, setSummary] = useState(null); const [attendance, setAttendance] = useState({ data: [], percentage: 0 }); const [subjects, setSubjects] = useState([]); const [selectedSubject, setSelectedSubject] = useState(""); const [error, setError] = useState("");
-  useEffect(() => { Promise.all([api.get("/dashboard"), api.get("/attendance/stats"), api.get("/subjects")]).then(([dashboard, stats, subjectResponse]) => { setSummary(getData(dashboard)); setAttendance(stats.data || { data: [], percentage: 0 }); setSubjects(getData(subjectResponse) || []); }).catch((requestError) => setError(messageOf(requestError))); }, []);
+  const summaryRequest = useFetch("/dashboard", null); const attendanceRequest = useFetch("/attendance/stats", { data: [], percentage: 0 }, (response) => response.data); const subjectsRequest = useFetch("/subjects"); const [selectedSubject, setSelectedSubject] = useState("");
+  const summary = summaryRequest.data; const attendance = attendanceRequest.data; const subjects = subjectsRequest.data; const error = summaryRequest.error || attendanceRequest.error || subjectsRequest.error; const loading = summaryRequest.loading || attendanceRequest.loading || subjectsRequest.loading;
+  if (loading && !summary) return <div className="card empty">Loading dashboard...</div>;
   if (error) return <div className="error">{error}</div>; if (!summary) return <div className="card empty">Loading dashboard...</div>;
   const overall = attendance.percentage ?? summary.overallAttendance ?? 0; const selected = (attendance.data || []).find((subject) => String(subject.subjectId) === selectedSubject); const selectedName = selected?.subjectName || subjects.find((subject) => String(subject._id) === selectedSubject)?.name;
   const stats = [["Total subjects", summary.subjects ?? summary.totalSubjects ?? summary.totals?.subjects ?? 0], ["Total tasks", summary.tasks ?? summary.totalTasks ?? summary.totals?.tasks ?? 0], ["Pending", summary.pending ?? summary.pendingTasks ?? 0], ["Total attendance", `${Math.round(overall)}%`]];
