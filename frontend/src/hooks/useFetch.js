@@ -1,32 +1,18 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import api from "../services/api";
 import { getData, messageOf } from "../utils/apiHelpers";
 
-const cache = new Map();
-
-const cacheKeyFor = (url) => `${localStorage.getItem("student_token") || "anonymous"}:${url}`;
-
 export default function useFetch(url, initial = [], select = getData) {
-  const cacheKey = cacheKeyFor(url);
-  const cached = cache.get(cacheKey);
-  const [data, setData] = useState(cached?.data ?? initial);
-  const [loading, setLoading] = useState(!cached);
-  const [error, setError] = useState("");
+  const token = localStorage.getItem("student_token") || "anonymous";
+  const query = useQuery({
+    queryKey: [token, url],
+    queryFn: async () => select(await api.get(url)) || initial,
+  });
 
-  const load = async () => {
-    if (!cache.has(cacheKey)) setLoading(true);
-    try {
-      const nextData = select(await api.get(url)) || initial;
-      cache.set(cacheKey, { data: nextData });
-      setData(nextData);
-      setError("");
-    } catch (requestError) {
-      setError(messageOf(requestError));
-    } finally {
-      setLoading(false);
-    }
+  return {
+    data: query.data ?? initial,
+    loading: query.isLoading,
+    error: query.isError ? messageOf(query.error) : "",
+    reload: query.refetch,
   };
-
-  useEffect(() => { load(); }, [url]);
-  return { data, setData, loading, error, reload: load };
 }
