@@ -13,8 +13,7 @@ const app = express();
 
 app.use(cors({ origin: process.env.CLIENT_URL || "https://study-track-lac.vercel.app" }));
 
-
-app.options("*", cors());
+// app.options("*", cors());
 app.use(express.json({ limit: "3mb" }));
 app.use(express.urlencoded({ extended: false }));
 
