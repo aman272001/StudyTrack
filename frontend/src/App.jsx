@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import Auth from "./components/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Attendance from "./pages/Attendance";
+import AttendanceHistory from "./pages/AttendanceHistory";
 import Dashboard from "./pages/Dashboard";
 import Notes from "./pages/Notes";
 import Profile from "./pages/Profile";
@@ -19,6 +20,7 @@ export default function App() {
     <Route path="/subjects" element={protectedPage(Subjects)} />
     <Route path="/tasks" element={protectedPage(Tasks)} />
     <Route path="/attendance" element={protectedPage(Attendance)} />
+    <Route path="/attendance-history" element={protectedPage(AttendanceHistory)} />
     <Route path="/notes" element={protectedPage(Notes)} />
     <Route path="/profile" element={protectedPage(Profile)} />
     <Route path="*" element={<Navigate to="/dashboard" replace />} />
