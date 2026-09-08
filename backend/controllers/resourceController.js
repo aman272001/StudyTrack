@@ -51,6 +51,9 @@ const update = (type) => async (req, res) => {
 const remove = (type) => async (req, res) => {
     const item = await models[type].findOneAndDelete({ _id: req.params.id, userId: req.user._id });
     if (!item) return res.status(404).json({ message: `${singular(type)} not found` });
+    if (type === "subjects") {
+        await Attendance.deleteMany({ userId: req.user._id, subjectId: item._id });
+    }
     res.json({ message: "Deleted successfully" });
 };
 const complete = async (req, res) => {
@@ -71,7 +74,7 @@ const attendanceStats = async (req, res) => {
         { $group: { _id: { subjectId: "$subjectId", status: "$status" }, count: { $sum: 1 } } },
         { $group: { _id: "$_id.subjectId", records: { $push: { status: "$_id.status", count: "$count" } }, total: { $sum: "$count" } } },
         { $lookup: { from: "subjects", localField: "_id", foreignField: "_id", as: "subject" } },
-        { $unwind: { path: "$subject", preserveNullAndEmptyArrays: true } }
+        { $unwind: "$subject" }
     ]);
     const data = rows.map((row) => {
         const present = row.records.find((record) => record.status === "Present")?.count || 0;
@@ -94,7 +97,12 @@ const dashboard = async (req, res) => {
         Task.find({ userId: req.user._id, completed: false }).sort({ deadline: 1 }).populate("subjectId", "name"),
         Note.find({ userId: req.user._id }).sort({ updatedAt: -1, createdAt: -1 }).limit(1).populate("subjectId", "name"),
         Note.countDocuments({ userId: req.user._id }),
-        Attendance.aggregate([{ $match: { userId: req.user._id } }, { $group: { _id: "$status", count: { $sum: 1 } } }])
+        Attendance.aggregate([
+            { $match: { userId: req.user._id } },
+            { $lookup: { from: "subjects", localField: "subjectId", foreignField: "_id", as: "subject" } },
+            { $unwind: "$subject" },
+            { $group: { _id: "$status", count: { $sum: 1 } } }
+        ])
     ]);
     const totals = { Present: 0, Absent: 0 };
     attendance.forEach((row) => { totals[row._id] = row.count; });
